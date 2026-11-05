@@ -55,7 +55,7 @@ fi
 
 # 4. 建公开仓库
 if ! "$GH_BIN" repo view "$OWNER/$REPO" >/dev/null 2>&1; then
-  "$GH_BIN" repo create "$REPO" --public --confirm \
+  "$GH_BIN" repo create "$REPO" --public \
     --description "轻修 · 免费手机修图 PWA（无水印、图片不出手机）"
 fi
 
