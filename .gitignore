@@ -4,6 +4,7 @@ node_modules/
 *.log
 *.tmp
 _shot*.png
+_*.png
 dist/
 .workbuddy/
 .wbapp_*.genie
