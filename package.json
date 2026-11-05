@@ -1,0 +1,11 @@
+{
+  "name": "qingxiu",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "轻修 —— 免费、无水印、图片不出手机的网页修图工具",
+  "scripts": {
+    "dev": "python -m http.server 5173",
+    "serve": "python -m http.server 5173"
+  }
+}

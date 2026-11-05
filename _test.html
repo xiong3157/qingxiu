@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>engine test</title></head>
+<body>
+<div id="out">pending</div>
+<script type="module">
+const log = [];
+const say = (s) => { log.push(s); document.getElementById('out').textContent = log.join('\n'); };
+
+window.onerror = (m) => say('JS ERROR: ' + m);
+
+try {
+  const { Engine } = await import('./app/engine.js');
+  const { FILTERS } = await import('./app/presets.js');
+
+  const cv = document.createElement('canvas');
+  cv.width = 400; cv.height = 300;
+  const ctx = cv.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 400, 300);
+  g.addColorStop(0, '#ff2020');
+  g.addColorStop(0.5, '#20ff60');
+  g.addColorStop(1, '#2040ff');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 400, 300);
+  ctx.fillStyle = '#ffe0c0';
+  ctx.fillRect(120, 60, 160, 180);
+  say('source ready');
+
+  const glc = document.createElement('canvas');
+  glc.width = 400; glc.height = 300;
+  document.body.appendChild(glc);
+  const eng = new Engine(glc);
+  say('engine ok, maxTex=' + eng.maxTextureSize());
+  eng.setImage(cv, 400, 300);
+  say('texture ok');
+
+  const adj = {
+    brightness: 0, contrast: 0, saturation: 0, temp: 0, tint: 0,
+    highlights: 0, shadows: 0, sharpen: 0, vignette: 0, grain: 0,
+  };
+
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([1, 0, 0, 1]),
+    cropScale: [1, 1], cropOffset: [0, 0],
+    adjust: adj, beauty: { soften: 0, whiten: 0 },
+    filter: FILTERS[0], filterAmt: 0,
+  });
+  const gl = eng.gl;
+  const px = new Uint8Array(4);
+  gl.readPixels(200, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  say('plain center px = ' + [...px].join(',') + ' err=' + gl.getError());
+
+  // 校验 uv 方向：左上角应为红色系
+  gl.readPixels(4, 290, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  say('top-left px = ' + [...px].join(','));
+
+  // 滤镜 + 调色
+  const adj2 = { ...adj, brightness: 0.2, contrast: 0.3, saturation: 0.3, vignette: 0.4, grain: 0.3 };
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([1, 0, 0, 1]),
+    cropScale: [1, 1], cropOffset: [0, 0],
+    adjust: adj2, beauty: { soften: 0.6, whiten: 0.5 },
+    filter: FILTERS[2], filterAmt: 1,
+  });
+  gl.readPixels(200, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  say('filtered center px = ' + [...px].join(',') + ' err=' + gl.getError());
+
+  // 液化：盖章后应改变采样
+  eng.stamp(0.5, 0.5, 0.08, 0.0, 0.15);
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([1, 0, 0, 1]),
+    cropScale: [1, 1], cropOffset: [0, 0],
+    adjust: adj, beauty: { soften: 0, whiten: 0 },
+    filter: FILTERS[0], filterAmt: 0,
+  });
+  gl.readPixels(200, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  say('after liquify px = ' + [...px].join(',') + ' hasLiquify=' + eng.hasLiquify);
+
+  // 裁剪 + 旋转
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([0, -1, 1, 0]),
+    cropScale: [0.5, 0.5], cropOffset: [0.25, 0.25],
+    adjust: adj, beauty: { soften: 0, whiten: 0 },
+    filter: FILTERS[0], filterAmt: 0,
+  });
+  gl.readPixels(200, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  say('rot90 crop px = ' + [...px].join(',') + ' err=' + gl.getError());
+
+  // 液化：强位移下像素应当真的被移动
+  const adjB = { ...adj };
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([1, 0, 0, 1]),
+    cropScale: [1, 1], cropOffset: [0, 0],
+    adjust: adjB, beauty: { soften: 0, whiten: 0 },
+    filter: FILTERS[0], filterAmt: 0,
+  });
+  gl.readPixels(100, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const before = [...px].join(',');
+  eng.stamp(0.25, 0.5, 0.4, 0.0, 0.15);
+  eng.render({
+    clipOrigin: [-1, 1], clipSize: [2, -2],
+    uvXf: new Float32Array([1, 0, 0, 1]),
+    cropScale: [1, 1], cropOffset: [0, 0],
+    adjust: adjB, beauty: { soften: 0, whiten: 0 },
+    filter: FILTERS[0], filterAmt: 0,
+  });
+  gl.readPixels(100, 150, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const after = [...px].join(',');
+  say('liquify before=' + before + ' after=' + after + (before !== after ? ' [移动生效]' : ' [未移动!]'));
+
+  // 导出链路：WebGL 画布 → 2D 画布 → Blob
+  const out = document.createElement('canvas');
+  out.width = 400; out.height = 300;
+  const octx = out.getContext('2d');
+  octx.drawImage(glc, 0, 0);
+  const blob = await new Promise((r) => out.toBlob(r, 'image/jpeg', 0.9));
+  say('export blob bytes=' + (blob ? blob.size : 'null'));
+
+  // 叠加图层：文字测量 / 命中测试 / 绘制
+  const ov = await import('./app/overlay.js');
+  const t = { id: 'a', kind: 'text', text: '你好\nworld', x: 100, y: 100, rot: 0, size: 40, color: '#fff', stroke: 0 };
+  const sz = ov.objectSize(t);
+  say('text size=' + sz.w.toFixed(1) + 'x' + sz.h.toFixed(1));
+  const hit = ov.hitTest([t], 105, 105, 1);
+  say('hit=' + (hit ? hit.id : 'null'));
+  const miss = ov.hitTest([t], 10, 10, 1);
+  say('miss=' + (miss ? hit.id : 'null'));
+  const c3 = document.createElement('canvas');
+  c3.width = 200; c3.height = 200;
+  const cx3 = c3.getContext('2d');
+  ov.drawObject(cx3, t);
+  ov.drawSelection(cx3, t, 1);
+  ov.drawObject(cx3, { id: 'b', kind: 'sticker', ch: '😀', x: 50, y: 50, rot: 0.3, size: 40 });
+  ov.drawObject(cx3, { id: 'c', kind: 'doodle', x: 50, y: 50, rot: 0, color: '#f00', width: 4, pts: [[10, 10], [30, 40], [60, 20]] });
+  say('overlay draw ok, handles=' + ov.handlePoints(t, 1).corners.length);
+
+  say('DONE');
+} catch (e) {
+  say('FAILED: ' + (e && e.message));
+}
+</script>
+</body></html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#111113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="轻修 —— 免费、无水印、图片不出手机的网页修图工具">
+<title>轻修 · 手机修图</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="app/styles.css">
+</head>
+<body>
+
+<section id="welcome" class="screen welcome">
+  <div class="welcome-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <circle cx="24" cy="24" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M24 5v9M24 34v9M5 24h9M34 24h9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <h1>轻修</h1>
+      <p class="tagline">免费 · 无水印 · 图片不出手机</p>
+    </div>
+
+    <div class="welcome-actions">
+      <button id="pickBtn" class="btn btn-primary btn-lg">选择照片</button>
+      <button id="cameraBtn" class="btn btn-ghost btn-lg">拍照</button>
+    </div>
+
+    <ul class="feat">
+      <li><span>零上传</span>全部运算在你这台设备上完成，原图不会离开手机</li>
+      <li><span>零费用</span>没有会员、没有水印、没有广告和次数限制</li>
+      <li><span>可离线</span>添加到主屏幕后，断网也能继续修图</li>
+    </ul>
+
+    <p class="hint-sm">支持 JPG / PNG / WebP / HEIC，单张最大 6000px</p>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" hidden>
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+</section>
+
+<section id="editor" class="screen editor hidden">
+  <header class="topbar">
+    <button id="backBtn" class="icon-btn" aria-label="关闭">✕</button>
+    <div class="topbar-center">
+      <button id="undoBtn" class="icon-btn" aria-label="撤销">↶</button>
+      <button id="redoBtn" class="icon-btn" aria-label="重做">↷</button>
+      <button id="compareBtn" class="icon-btn wide" aria-label="对比原图">对比</button>
+    </div>
+    <button id="exportBtn" class="btn btn-primary btn-sm">导出</button>
+  </header>
+
+  <div id="stage">
+    <canvas id="glCanvas"></canvas>
+    <canvas id="overlayCanvas"></canvas>
+    <div id="loading" class="loading hidden"><span class="spinner"></span><em>处理中…</em></div>
+  </div>
+
+  <nav id="tabs" class="tabs"></nav>
+  <div id="panel" class="panel"></div>
+</section>
+
+<div id="textSheet" class="sheet hidden">
+  <div class="sheet-body">
+    <textarea id="textInput" rows="2" placeholder="输入文字…"></textarea>
+    <div class="sheet-row">
+      <button id="textCancel" class="btn btn-ghost">取消</button>
+      <button id="textConfirm" class="btn btn-primary">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="result hidden">
+  <div class="result-box">
+    <img id="resultImg" alt="导出结果">
+    <p class="result-tip">长按图片可直接保存到相册</p>
+    <div class="result-actions">
+      <button id="resultClose" class="btn btn-ghost">返回编辑</button>
+      <a id="resultDownload" class="btn btn-primary" download>下载</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module" src="app/main.js"></script>
+</body>
+</html>
