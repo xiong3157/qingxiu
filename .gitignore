@@ -6,3 +6,4 @@ node_modules/
 _shot*.png
 dist/
 .workbuddy/
+.wbapp_*.genie
